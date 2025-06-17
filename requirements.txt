@@ -1,0 +1,12 @@
+# requirements.txt
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.4.2
+tensorflow==2.16.1
+keras==3.3.3
+Flask==3.0.3
+requests==2.31.0
+python-dotenv==1.0.1
+joblib==1.4.2
+pytz==2024.1
+earthengine-api==0.1.391 # สำหรับ Google Earth Engine
