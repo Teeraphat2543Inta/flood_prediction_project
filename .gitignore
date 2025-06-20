@@ -29,6 +29,10 @@ Thumbs.db
 data/raw/
 data/processed/
 
+key/*.json
+
+benz/
+
 # Models (ถ้าไม่ต้องการเก็บไฟล์โมเดลใน Git หรือจะใช้ Git LFS)
 models/
 # ถ้าคุณมีไฟล์โมเดลเฉพาะเจาะจงที่ใหญ่มากๆ และอยากจะละเว้น

@@ -7,6 +7,9 @@ from datetime import datetime, timedelta
 # โหลดตัวแปรสภาพแวดล้อมจากไฟล์ .env
 load_dotenv() 
 
+#  For example: path_to_json_key = ./key/benz-gee-50f789454788.json
+GEE_JSON_KEY = os.getenv("path_to_json_key")
+
 # --- API Keys ---
 # ดึง API Key จากตัวแปรสภาพแวดล้อมเพื่อความปลอดภัย
 # หากไม่มีค่าใน .env จะใช้ค่าเริ่มต้นที่เป็น placeholder
@@ -52,7 +55,11 @@ GEE_SCALE_METERS = 30
 # [แก้ไข] ชื่อ Collection และ Band ของ GPM IMERG ที่คุณระบุก่อนหน้านี้ถูกต้องแล้ว
 # ตรวจสอบอีกครั้งใน GEE Data Catalog ว่าเป็นชื่อล่าสุดหรือไม่
 GPM_IMERG_COLLECTION = "NASA/GPM_L3/IMERG_V06/HOURLY_V06" 
-GPM_RAINFALL_BAND = "precipitationCal" 
+
+NASA_GPM_L3_IMERG_V07 = "NASA/GPM_L3/IMERG_V07"
+# GPM_RAINFALL_BAND = "precipitationCal" 
+GPM_RAINFALL_BAND = "precipitation" 
+
 
 SENTINEL1_COLLECTION = "COPERNICUS/S1_GRD"
 SENTINEL1_BAND = "VV" 

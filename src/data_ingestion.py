@@ -1,6 +1,5 @@
 # src/data_ingestion.py
 
-import ee # Google Earth Engine Library
 import requests
 import pandas as pd
 import numpy as np
@@ -13,23 +12,11 @@ import json
 from config import config # นำเข้าค่ากำหนดจาก config.py
 from src.utils import datetime_to_unix, unix_to_datetime, get_current_local_time # นำเข้าฟังก์ชันยูทิลิตี้ (เพิ่ม get_current_local_time)
 
-# --- การเริ่มต้น Google Earth Engine ---
-# ขั้นตอนนี้สำคัญมาก: คุณต้องรัน 'earthengine authenticate' ใน Terminal ของคุณก่อน
-# เพื่อตั้งค่าบัญชีและโปรเจกต์ GEE. ถ้าไม่ได้ทำ GEE API จะไม่ทำงาน.
-try:
-    if config.GEE_PROJECT_ID:
-        ee.Initialize(project=config.GEE_PROJECT_ID)
-    else:
-        # [แก้ไข] ควรให้ GEE_PROJECT_ID เป็น None ใน config.py ถ้าไม่มี ไม่ควรปล่อยให้ initialize() โดยไม่มี project ID
-        # และควรแจ้งเตือนชัดเจนว่าอาจมีปัญหาถ้าไม่มี Project ID ที่ถูกต้อง
-        ee.Initialize() 
-        print("Warning: GEE_PROJECT_ID is not set in config.py or .env. Some GEE features might be limited.")
-    print("Google Earth Engine initialized successfully.")
-except Exception as e:
-    print(f"Error initializing Google Earth Engine. Please ensure you've run 'earthengine authenticate' and have internet access.")
-    print(f"Error details: {e}")
-    print("Satellite data fetching functions might not work correctly without GEE initialization.")
+from src.connection.connection2gee import GEEConnection
 
+# gee = GEEConnection(json_key_path='benz-gee-50f789454788.json')
+gee = GEEConnection()
+ee = gee.ee
 
 # --- ฟังก์ชันสำหรับดึงข้อมูลสภาพอากาศจาก OpenWeatherMap ---
 # [แก้ไข] ปรับ history_hours ให้ใช้ config.SEQUENCE_LENGTH และ PREDICTION_HORIZON_HOURS เพื่อความยืดหยุ่น
@@ -216,7 +203,6 @@ def get_gee_point_data(collection_path, band_name, point, start_date_utc, end_da
         data_list = feature_collection.reduceColumns(
             ee.Reducer.toList(2), ['date', 'value']
         ).values().get(0).getInfo()
-
         if not data_list:
             print(f"No data found for {collection_path} in the specified period.")
             return pd.DataFrame()
@@ -244,7 +230,8 @@ def fetch_satellite_rainfall(start_time_utc, end_time_utc):
     """ดึงข้อมูลปริมาณน้ำฝนรายชั่วโมงจาก GPM IMERG."""
     point = ee.Geometry.Point(config.TARGET_AREA_LON, config.TARGET_AREA_LAT)
     df_gpm = get_gee_point_data(
-        collection_path=config.GPM_IMERG_COLLECTION,
+        # collection_path=config.GPM_IMERG_COLLECTION,
+        collection_path=config.NASA_GPM_L3_IMERG_V07,
         band_name=config.GPM_RAINFALL_BAND,
         point=point,
         start_date_utc=start_time_utc,
@@ -411,7 +398,9 @@ def collect_historical_data():
         else:
             df_base.index = df_base.index.tz_convert(config.TIMEZONE)
         
-        df_base = df_base.loc[start_date_local:end_date_local].copy() # ใช้ .copy() เพื่อหลีกเลี่ยง SettingWithCopyWarning
+        # df_base = df_base.loc[start_date_local:end_date_local].copy() # ใช้ .copy() เพื่อหลีกเลี่ยง SettingWithCopyWarning
+        mask = (df_base.index >= start_date_utc) & (df_base.index <= end_date_utc)
+        df_base = df_base.loc[mask].copy() # ใช้ .copy() เพื่อหลีกเลี่ยง SettingWithCopyWarning
 
     else:
         print(f"WARNING: Base historical data file not found at {config.HISTORICAL_DATA_FILE}.")

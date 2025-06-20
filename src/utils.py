@@ -8,6 +8,17 @@ from pytz import timezone, UTC # [แก้ไข] Import UTC เพื่อค
 # นำเข้า config เพื่อใช้ TIMEZONE
 from config import config 
 
+def get_current_local_time():
+    """
+    คืนค่าวันที่และเวลาปัจจุบันใน timezone ที่กำหนดใน config.TIMEZONE.
+    
+    Returns:
+    - datetime.datetime: วัตถุ datetime ที่มี timezone.
+    """
+    return datetime.datetime.now()
+
+
+
 def calculate_lunar_phase(date_time_obj):
     """
     คำนวณข้างขึ้นข้างแรม (0-7, โดยที่ 0=เดือนดับ, 4=เดือนเต็มดวง)
