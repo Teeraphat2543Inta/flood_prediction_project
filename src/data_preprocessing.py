@@ -40,7 +40,7 @@ def create_features(df):
 
     # --- Lag Features (คุณลักษณะย้อนหลัง) ---
     # [แก้ไข] ใช้ config.LAG_FEATURES แทนการ hardcode
-    features_to_lag = config.LAG_FEATURES 
+    features_to_lag = config. LAG_FEATURES
     
     for feature in features_to_lag:
         if feature in df_copy.columns:

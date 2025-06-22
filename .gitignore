@@ -26,8 +26,8 @@ build/
 Thumbs.db
 
 # Data (ถ้าไม่ต้องการเก็บไฟล์ข้อมูลใน Git)
-data/raw/
-data/processed/
+# data/raw/
+# data/processed/
 
 key/*.json
 

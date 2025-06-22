@@ -15,7 +15,8 @@ def get_current_local_time():
     Returns:
     - datetime.datetime: วัตถุ datetime ที่มี timezone.
     """
-    return datetime.datetime.now()
+    local_tz = timezone(config.TIMEZONE)
+    return datetime.datetime.now(local_tz)
 
 
 

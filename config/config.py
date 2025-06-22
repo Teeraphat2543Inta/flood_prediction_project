@@ -108,6 +108,41 @@ PATIENCE = 10
 LEARNING_RATE = 0.001 
 TRAIN_TEST_SPLIT_RATIO = 0.8 # [เพิ่ม] อัตราส่วน Train/Test Split
 
+# --- Model Architecture Parameters ---
+LSTM_UNITS = [64, 32]  # Number of units in each LSTM layer
+DROPOUT_RATE = 0.2     # Dropout rate for regularization
+DENSE_UNITS = 32       # Number of units in dense layer
+LR_REDUCTION_PATIENCE = 5  # Patience for learning rate reduction
+MIN_LEARNING_RATE = 1e-6   # Minimum learning rate
+
+# --- Data Split Parameters ---
+TEST_SPLIT_RATIO = 0.2      # Test set ratio
+VALIDATION_SPLIT_RATIO = 0.2 # Validation set ratio
+
+# --- Feature Engineering Parameters ---
+LAG_FEATURES = ["temperature", "humidity", "pressure", "wind_speed", "rain_1h", 
+                "sea_level_m", "local_water_level_m", "satellite_rainfall_mm_hr"]
+ROLLING_WINDOWS = [3, 6, 12]  # Rolling window sizes in hours
+RAINFALL_COLUMNS = ["rain_1h", "satellite_rainfall_mm_hr"]
+WATER_LEVEL_COLUMNS = ["sea_level_m", "local_water_level_m"]
+TARGET_AREA_ELEVATION_M = 1.5  # Elevation of target area in meters
+
+# --- Interaction Features ---
+INTERACTION_FEATURES_PAIRS = [
+    ("rain_1h", "satellite_rainfall_mm_hr", "rain_interaction"),
+    ("humidity", "temperature", "humidity_temp_interaction"),
+    ("pressure", "wind_speed", "pressure_wind_interaction")
+]
+
+# --- Target Variables ---
+TARGET_RAW_WATER_LEVEL_COLUMN = "local_water_level_m"
+TARGET_CLASSIFICATION = "is_flood_next_1h"
+TARGET_REGRESSION = "water_level_next_1h"
+ALL_TARGET_COLUMNS = [TARGET_CLASSIFICATION, TARGET_REGRESSION]
+
+# --- Model Types to Train ---
+MODEL_TYPES_TO_TRAIN = ["classification"]  # Can be ["classification", "regression"] or just one
+
 # --- Deployment Parameters (สำหรับ FastAPI) ---
 # [แก้ไข] เปลี่ยนจาก Flask API เป็น FastAPI เพื่อให้สอดคล้องกับ src/prediction_service.py
 API_HOST = "0.0.0.0" 

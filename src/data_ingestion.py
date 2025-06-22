@@ -152,15 +152,16 @@ def fetch_local_water_level_data(area_id, start_time_local, end_time_local): # [
         dummy_water_level += flood_spike_potential
         
         # ทำให้บางช่วงเวลาเกินเกณฑ์น้ำท่วม
+        dummy_water_level = pd.Series(dummy_water_level, index=timestamps)  # Convert to Pandas Series for mutability
         random_indices = np.random.choice(len(timestamps), size=int(len(timestamps) * 0.1), replace=False) # 10% ของจุดข้อมูล
         for idx in random_indices:
             # ทำให้ค่าบางค่าเกินค่า threshold เช่น 1.5 - 2.5 เมตร
-            if dummy_water_level[idx] < config.FLOOD_WATER_LEVEL_THRESHOLD_M:
-                dummy_water_level[idx] = np.random.uniform(config.FLOOD_WATER_LEVEL_THRESHOLD_M, 
-                                                            config.FLOOD_WATER_LEVEL_THRESHOLD_M + 1.0) 
-            
-    # จำกัดไม่ให้ระดับน้ำต่ำกว่า 0
-    dummy_water_level[dummy_water_level < 0] = 0.05
+            if dummy_water_level.iloc[idx] < config.FLOOD_WATER_LEVEL_THRESHOLD_M:
+                dummy_water_level.iloc[idx] = np.random.uniform(config.FLOOD_WATER_LEVEL_THRESHOLD_M, config.FLOOD_WATER_LEVEL_THRESHOLD_M + 1.0)
+        dummy_water_level = dummy_water_level.values  # Convert back to NumPy array if needed
+    
+    # จำกัดไม่ให้ระดับน้ำต่ำกว่า 0 (ต้องทำหลังจากการจำลองน้ำท่วมเสร็จแล้ว)
+    dummy_water_level = np.maximum(dummy_water_level, 0.05)
     
     dummy_data = {
         'timestamp': timestamps,
@@ -257,7 +258,7 @@ def fetch_satellite_water_extent(start_time_utc, end_time_utc, instrument='Senti
             .filter(ee.Filter.listContains('transmitterReceiverPolarisation', config.SENTINEL1_BAND))\
             .filter(ee.Filter.eq('instrumentMode', config.SENTINEL1_FILTER_MODE))\
             .map(lambda image: image.clip(point.buffer(config.GEE_SCALE_METERS * 2))) # Clip image to area of interest
-
+        print('collection...')
         def get_s1_value(image):
             date = image.date().format('YYYY-MM-dd HH:mm:ss')
             value = image.select(config.SENTINEL1_BAND).reduceRegion(
@@ -270,9 +271,11 @@ def fetch_satellite_water_extent(start_time_utc, end_time_utc, instrument='Senti
         
         try:
             feature_collection = collection.map(get_s1_value)
+            print('feature_collection...')
             data_list = feature_collection.reduceColumns(
                 ee.Reducer.toList(2), ['date', 'value']
             ).values().get(0).getInfo()
+            print('data_list....')
 
             if not data_list:
                 print(f"No Sentinel-1 data found for the specified period.")
@@ -384,7 +387,8 @@ def collect_historical_data():
     print("Collecting historical data for model training...")
     
     end_date_local = get_current_local_time() # ใช้ฟังก์ชันจาก utils
-    start_date_local = end_date_local - timedelta(days=config.HISTORICAL_DAYS_TO_FETCH) # [แก้ไข] ใช้ config.HISTORICAL_DAYS_TO_FETCH
+    # start_date_local = end_date_local - timedelta(days=config.HISTORICAL_DAYS_TO_FETCH) # [แก้ไข] ใช้ config.HISTORICAL_DAYS_TO_FETCH
+    start_date_local = end_date_local - timedelta(days=30)
     
     start_date_utc = start_date_local.astimezone(timezone('UTC'))
     end_date_utc = end_date_local.astimezone(timezone('UTC'))
@@ -399,7 +403,7 @@ def collect_historical_data():
             df_base.index = df_base.index.tz_convert(config.TIMEZONE)
         
         # df_base = df_base.loc[start_date_local:end_date_local].copy() # ใช้ .copy() เพื่อหลีกเลี่ยง SettingWithCopyWarning
-        mask = (df_base.index >= start_date_utc) & (df_base.index <= end_date_utc)
+        mask = (df_base.index >= start_date_local) & (df_base.index <= end_date_local)
         df_base = df_base.loc[mask].copy() # ใช้ .copy() เพื่อหลีกเลี่ยง SettingWithCopyWarning
 
     else:
@@ -426,6 +430,7 @@ def collect_historical_data():
         print("Dummy base historical data generated and saved.")
 
     full_time_index = pd.date_range(start=start_date_local, end=end_date_local, freq='H', tz=config.TIMEZONE)
+    df_base = df_base[~df_base.index.duplicated(keep='first')]  # Remove duplicate indices
     combined_df = df_base.reindex(full_time_index)
     
     # --- 2. ดึงข้อมูลจาก OpenWeatherMap ---
@@ -445,7 +450,7 @@ def collect_historical_data():
     # --- 3. ดึงข้อมูลจำลองระดับน้ำขึ้นน้ำลงและระดับน้ำในพื้นที่ (ใช้สำหรับข้อมูลประวัติศาสตร์) ---
     tide_df = fetch_tide_data(start_date_local, end_date_local)
     if not tide_df.empty:
-        combined_df = combined_df.join(tide_df, how='left')
+        combined_df = combined_df.join(tide_df, how='left', rsuffix='_tide')  # Add a suffix to avoid column overlap
 
     local_water_level_df = fetch_local_water_level_data("Bangkok", start_date_local, end_date_local) # [แก้ไข] ชื่อฟังก์ชัน
     if not local_water_level_df.empty:
@@ -469,7 +474,10 @@ def collect_historical_data():
         # สำหรับข้อมูลที่ sparse มากๆ เช่น Sentinel-1, การ resample และ ffill อาจทำให้เกิดค่าที่ซ้ำซ้อนนาน
         # พิจารณาการ interpolate หรือใช้ค่าที่ใกล้ที่สุด
         # [แก้ไข] อาจใช้ limit_area เพื่อไม่ให้ ffill/bfill ไกลเกินไป
-        combined_df = combined_df.join(df_s1_water.resample('H').mean().ffill(limit=24), how='left') # ffill ไม่เกิน 24 ชั่วโมง
+        # Drop the existing column to avoid overlap or specify a suffix
+        # if 'satellite_water_index_s1_vv' in combined_df.columns:
+        #     combined_df = combined_df.drop(columns=['satellite_water_index_s1_vv'])
+        combined_df = combined_df.join(df_s1_water.resample('H').mean().ffill(limit=24), how='left', rsuffix='_water_extent') # ffill ไม่เกิน 24 ชั่วโมง
     
     # SMAP soil moisture (รายวัน)
     df_smap_sm = fetch_satellite_soil_moisture(start_date_utc, end_date_utc)

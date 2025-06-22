@@ -24,6 +24,7 @@ def main():
     # และรวมเข้ากับ historical_weather_data.csv หากมี
     try:
         historical_df = collect_historical_data()
+        # return 
     except Exception as e:
         logger.critical(f"ERROR: Historical data collection failed: {e}. Cannot proceed with training.", exc_info=True)
         return
